@@ -1,12 +1,14 @@
 {
-  "name": "@paulrberg/solidity-template",
-  "description": "Setup for writing Solidity smart contracts",
+  "name": "xaudio",
+  "description": "xAudio contracts",
   "version": "1.0.0",
   "author": {
-    "name": "Paul Razvan Berg",
-    "url": "https://paulrberg.com"
+    "name": "0xlook"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.1.0",
+    "@openzeppelin/contracts-upgradeable": "^4.1.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "^9.1.2",
     "@commitlint/config-conventional": "^9.1.2",
