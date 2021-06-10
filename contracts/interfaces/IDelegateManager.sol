@@ -15,4 +15,12 @@ interface IDelegateManager {
         external
         view
         returns (uint256);
+
+    function getStakingAddress() external view returns (address);
+
+    function getMinDelegationAmount() external view returns (uint256);
+
+    function getClaimsManagerAddress() external view returns (address);
+
+    function getUndelegateLockupDuration() external view returns (uint256);
 }

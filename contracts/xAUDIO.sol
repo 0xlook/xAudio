@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/IDelegateManager.sol";
+import "./interfaces/IClaimManager.sol";
 
 contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, PausableUpgradeable {
     using SafeERC20 for IERC20;
@@ -52,7 +53,7 @@ contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
         targetSP = _targetSP;
         delegateManager = _delegateManger;
 
-        audio.safeApprove(address(delegateManager), MAX_UINT);
+        audio.safeApprove(delegateManager.getStakingAddress(), MAX_UINT);
 
         _updateAdminActiveTimestamp();
     }
@@ -151,14 +152,15 @@ contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
      * @param audioAmount: AUDIO to contribute
      */
     function mintWithToken(uint256 audioAmount) external whenNotPaused notLocked(msg.sender) {
-        require(audioAmount > 0, "Must send AUDIO");
+        require(audioAmount > 0, "Must send auio");
+        require(audioAmount >= getMinDelegationAmount(), "Must send > minDelegateAmount");
         _lock(msg.sender);
 
         (uint256 stakedBalance, uint256 bufferBalance) = getFundBalances();
 
         audio.safeTransferFrom(msg.sender, address(this), audioAmount);
 
-        return _mintInternal(bufferBalance, stakedBalance, audioAmount);
+        _mintInternal(bufferBalance, stakedBalance, audioAmount);
     }
 
     /**
@@ -210,6 +212,20 @@ contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
 
     function getFundBalances() public view returns (uint256, uint256) {
         return (getStakedBalance(), getBufferBalance());
+    }
+
+    function getMinDelegationAmount() public view returns (uint256) {
+        uint256 stakedBalance = delegateManager.getDelegatorStakeForServiceProvider(address(this), targetSP);
+        uint256 minDelegation = delegateManager.getMinDelegationAmount();
+        if (stakedBalance >= minDelegation) {
+            return 0;
+        }
+
+        return ((minDelegation - stakedBalance + 1) * AUDIO_BUFFER_TARGET) / (AUDIO_BUFFER_TARGET - 1) - 1;
+    }
+
+    function claimPending() public view returns (bool) {
+        return IClaimManager(delegateManager.getClaimsManagerAddress()).claimPending(targetSP);
     }
 
     /* ========================================================================================= */
@@ -292,13 +308,17 @@ contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
         uint256 _incrementalAudio
     ) internal {
         uint256 totalSupply = totalSupply();
-        uint256 allocationToStake =
-            _calculateAllocationToStake(_bufferBalance, _incrementalAudio, _stakedBalance, totalSupply);
+        uint256 allocationToStake = _calculateAllocationToStake(
+            _bufferBalance,
+            _incrementalAudio,
+            _stakedBalance,
+            totalSupply
+        );
         _stake(allocationToStake);
 
         uint256 audioHoldings = _bufferBalance + (_stakedBalance);
         uint256 mintAmount = _calculateMintAmount(_incrementalAudio, audioHoldings, totalSupply);
-        return super._mint(msg.sender, mintAmount);
+        super._mint(msg.sender, mintAmount);
     }
 
     /**
@@ -320,6 +340,7 @@ contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
     }
 
     function _cooldown(uint256 _amount) internal {
+        require(!claimPending(), "Claim should not be pending");
         cooldownActivated = true;
         delegateManager.requestUndelegateStake(targetSP, _amount);
     }
@@ -334,6 +355,7 @@ contract xAUDIO is Initializable, ERC20Upgradeable, OwnableUpgradeable, Pausable
     }
 
     function _claimRewards() internal {
+        require(claimPending(), "Claim should  be pending");
         delegateManager.claimRewards(targetSP);
     }
 

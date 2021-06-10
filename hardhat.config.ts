@@ -66,7 +66,11 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic,
       },
-      chainId: chainIds.hardhat,
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+        blockNumber: 12604082,
+      },
+      chainId: chainIds.mainnet,
     },
     goerli: createTestnetConfig("goerli"),
     kovan: createTestnetConfig("kovan"),
@@ -94,6 +98,9 @@ const config: HardhatUserConfig = {
         runs: 800,
       },
     },
+  },
+  mocha: {
+    timeout: 200000,
   },
   typechain: {
     outDir: "typechain",
