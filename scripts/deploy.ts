@@ -10,9 +10,7 @@ async function main(): Promise<void> {
   // If this runs in a standalone fashion you may want to call compile manually
   // to make sure everything is compiled
   // await run("compile");
-
   // We get the contract to deploy
-  
 }
 
 // We recommend this pattern to be able to use async/await everywhere
